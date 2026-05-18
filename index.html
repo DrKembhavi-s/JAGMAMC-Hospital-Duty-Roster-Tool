@@ -1,0 +1,739 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hospital Duty Roster Manager</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Segoe UI',Arial,sans-serif;background:#edf2f7;color:#1a202c;min-height:100vh}
+.app-header{background:linear-gradient(135deg,#1a5276,#2874a6);color:#fff;padding:14px 24px;display:flex;align-items:center;gap:14px;box-shadow:0 3px 10px rgba(0,0,0,.25)}
+.app-header .ico{font-size:34px}
+.app-header h1{font-size:18px;font-weight:700}
+.app-header p{font-size:12px;opacity:.82;margin-top:2px}
+.tab-bar{display:flex;background:#154360;padding:0 20px;gap:2px;flex-wrap:wrap}
+.tab-btn{padding:11px 22px;color:rgba(255,255,255,.65);cursor:pointer;font-size:13px;font-weight:600;border:none;background:transparent;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+.tab-btn.active{color:#fff;border-bottom-color:#f39c12}
+.tab-btn:hover{color:#fff}
+.content{padding:20px;max-width:1280px;margin:0 auto}
+.card{background:#fff;border-radius:10px;box-shadow:0 2px 12px rgba(0,0,0,.07);padding:18px;margin-bottom:18px}
+.card-title{font-size:14px;font-weight:700;color:#1a5276;margin-bottom:14px;padding-bottom:10px;border-bottom:2px solid #d6eaf8;display:flex;align-items:center;gap:8px}
+.category-tabs{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+.cat-tab{padding:6px 15px;border-radius:20px;border:2px solid #2874a6;color:#2874a6;cursor:pointer;font-size:12px;font-weight:700;background:#fff;transition:all .2s}
+.cat-tab.active{background:#2874a6;color:#fff}
+.add-row{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.add-row input[type=text]{flex:1;min-width:180px;padding:9px 13px;border:1px solid #ccc;border-radius:8px;font-size:13px}
+.add-row input:focus{outline:none;border-color:#2874a6;box-shadow:0 0 0 3px rgba(40,116,166,.12)}
+.upload-zone{border:2px dashed #2874a6;border-radius:10px;padding:14px 18px;background:#f0f7ff;display:flex;align-items:center;gap:12px;cursor:pointer;transition:all .2s;margin-bottom:14px}
+.upload-zone:hover{background:#daeeff;border-color:#1a5276}
+.upload-zone .uz-icon{font-size:26px}
+.upload-zone .uz-text{font-size:13px;color:#1a5276;font-weight:600}
+.upload-zone .uz-sub{font-size:11px;color:#7f8c8d;margin-top:2px}
+.staff-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:7px;max-height:300px;overflow-y:auto;padding-right:4px}
+.staff-item{display:flex;align-items:center;justify-content:space-between;padding:7px 11px;background:#f7fbff;border-radius:7px;border:1px solid #d6eaf8;font-size:12.5px}
+.staff-item button{background:none;border:none;color:#e74c3c;cursor:pointer;font-size:15px;line-height:1;padding:0 3px}
+.staff-count{font-size:11px;color:#7f8c8d;margin-top:8px}
+.btn{padding:9px 18px;border-radius:8px;border:none;cursor:pointer;font-size:13px;font-weight:600;transition:all .2s;display:inline-flex;align-items:center;gap:5px;white-space:nowrap}
+.btn-primary{background:#2874a6;color:#fff}.btn-primary:hover{background:#1a5276}
+.btn-success{background:#1e8449;color:#fff}.btn-success:hover{background:#196f3d}
+.btn-danger{background:#c0392b;color:#fff}.btn-danger:hover{background:#a93226}
+.btn-word{background:#2e4057;color:#fff}.btn-word:hover{background:#1a2535}
+.btn-outline{background:#fff;color:#2874a6;border:2px solid #2874a6}.btn-outline:hover{background:#2874a6;color:#fff}
+.btn-sm{padding:5px 11px;font-size:12px}
+.btn-warn{background:#f39c12;color:#fff}.btn-warn:hover{background:#d68910}
+.builder-layout{display:grid;grid-template-columns:255px 1fr;gap:18px}
+@media(max-width:700px){.builder-layout{grid-template-columns:1fr}}
+.day-list{display:flex;flex-direction:column;gap:4px;max-height:500px;overflow-y:auto;padding-right:3px}
+.day-item{padding:9px 13px;border-radius:8px;cursor:pointer;border:1px solid #e2e8f0;transition:all .15s;background:#fff}
+.day-item:hover{background:#eaf4fb;border-color:#2874a6}
+.day-item.active{background:#2874a6;color:#fff;border-color:#2874a6}
+.day-item.has-data{border-left:4px solid #27ae60}
+.day-item.active.has-data{border-left:4px solid #f1c40f}
+.day-label{font-size:13px;font-weight:700}
+.day-date{font-size:11px;opacity:.75;margin-top:1px}
+.day-check{font-size:10px;margin-top:2px;opacity:.8}
+.shift-tabs{display:flex;border-radius:8px;overflow:hidden;border:1px solid #ddd;margin-bottom:14px}
+.shift-tab{flex:1;padding:9px 6px;text-align:center;cursor:pointer;font-size:12px;font-weight:700;background:#f7f9fb;border:none;border-right:1px solid #ddd;transition:all .2s;color:#555;line-height:1.3}
+.shift-tab:last-child{border-right:none}
+.shift-tab.active{background:#1a5276;color:#fff}
+.shift-tab:hover:not(.active){background:#d6eaf8}
+.cat-section{border:1px solid #e2e8f0;border-radius:8px;margin-bottom:9px;overflow:hidden}
+.cat-header{padding:9px 14px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;background:#f7f9fb;user-select:none}
+.cat-header:hover{background:#eaf4fb}
+.cat-header-left{display:flex;align-items:center;gap:10px}
+.cat-badge{font-size:11px;font-weight:700;padding:2px 9px;border-radius:12px;color:#fff}
+.badge-rmo{background:#c0392b}.badge-emo{background:#7d3c98}.badge-nurse{background:#1e8449}.badge-ayah{background:#d68910}.badge-consultant{background:#1a5276}
+.sel-count{font-size:11px;color:#27ae60;font-weight:700}
+.cat-body{padding:11px 14px;border-top:1px solid #e2e8f0}
+.check-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(155px,1fr));gap:5px}
+.check-item{display:flex;align-items:center;gap:7px;padding:4px 8px;border-radius:6px;cursor:pointer;transition:background .15s;font-size:12.5px}
+.check-item:hover{background:#eaf4fb}
+.check-item input{cursor:pointer;accent-color:#2874a6}
+.empty-msg{text-align:center;padding:24px;color:#b0bec5;font-size:13px}
+.period-row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.period-row label{font-size:13px;font-weight:700;color:#555}
+.period-row input[type=date]{padding:8px 12px;border:1px solid #ccc;border-radius:8px;font-size:13px;font-family:inherit}
+.period-pill{background:#d6eaf8;padding:7px 15px;border-radius:8px;font-size:12px;color:#1a5276;font-weight:700}
+.view-controls{display:flex;align-items:center;gap:18px;flex-wrap:wrap;margin-bottom:16px}
+.radio-grp{display:flex;gap:14px}
+.radio-item{display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px}
+.radio-item input{accent-color:#2874a6;cursor:pointer}
+.dl-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:6px}
+.inst-row{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+.inst-row label{font-size:13px;font-weight:700;color:#555;white-space:nowrap}
+.inst-row input{flex:1;min-width:220px;padding:8px 13px;border:1px solid #ccc;border-radius:8px;font-size:13px}
+.preview-wrap{overflow-x:auto}
+.r-table{width:100%;border-collapse:collapse;font-size:12px;min-width:500px}
+.r-table th{background:#1a5276;color:#fff;padding:9px 11px;text-align:left;font-weight:700;white-space:nowrap}
+.r-table td{padding:7px 11px;border-bottom:1px solid #e2e8f0;vertical-align:top}
+.r-table tr:nth-child(even) td{background:#f7fbff}
+.shift-heading{color:#1a5276;font-size:13px;font-weight:700;margin:18px 0 8px;border-left:4px solid #2874a6;padding-left:10px}
+.tab-panel{display:none}.tab-panel.active{display:block}
+.action-row{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap}
+.notice{background:#eafaf1;border:1px solid #a9dfbf;border-radius:8px;padding:10px 14px;font-size:12px;color:#1e8449;margin-top:10px}
+
+/* ── MODAL ── */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:1000;align-items:center;justify-content:center;padding:16px}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:12px;width:100%;max-width:780px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.25)}
+.modal-head{padding:16px 20px;border-bottom:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between}
+.modal-head h2{font-size:15px;font-weight:700;color:#1a5276}
+.modal-close{background:none;border:none;font-size:22px;cursor:pointer;color:#888;line-height:1}
+.modal-body{padding:18px 20px;overflow-y:auto;flex:1}
+.modal-foot{padding:14px 20px;border-top:1px solid #e2e8f0;display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.map-group{border:1px solid #e2e8f0;border-radius:8px;margin-bottom:12px;overflow:hidden}
+.map-head{padding:9px 14px;background:#f7f9fb;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.map-head-left{font-size:13px;font-weight:700;color:#1a5276}
+.map-assign-row{display:flex;align-items:center;gap:8px;font-size:12px}
+.map-assign-row select{padding:4px 8px;border-radius:6px;border:1px solid #ccc;font-size:12px;font-family:inherit}
+.map-names{padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px}
+.map-name-tag{padding:3px 10px;background:#eaf4fb;border-radius:20px;font-size:12px;border:1px solid #d6eaf8;display:flex;align-items:center;gap:5px}
+.map-name-tag button{background:none;border:none;color:#e74c3c;cursor:pointer;font-size:13px;line-height:1;padding:0}
+.raw-preview{background:#f7f9fb;border:1px solid #e2e8f0;border-radius:8px;padding:12px;font-size:12px;max-height:200px;overflow-y:auto;white-space:pre-wrap;font-family:monospace;color:#333;margin-bottom:12px}
+.import-info{background:#fff8e1;border:1px solid #ffe082;border-radius:8px;padding:10px 14px;font-size:12px;color:#795548;margin-bottom:14px}
+.import-info b{color:#e65100}
+.tip-box{background:#e8f4fd;border-radius:8px;padding:10px 14px;font-size:12px;color:#1a5276;margin-bottom:14px}
+.tip-box b{display:block;margin-bottom:4px}
+</style>
+</head>
+<body>
+
+<div class="app-header">
+  <div class="ico">🏥</div>
+  <div>
+    <h1>Hospital Duty Roster Manager</h1>
+    <p>RMOs · EMOs · Nurses · Ayahs · Consultants &nbsp;|&nbsp; Fortnightly · 3-Shift Planner</p>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <button class="tab-btn active" onclick="switchTab('staff')">👥 Staff Management</button>
+  <button class="tab-btn" onclick="switchTab('builder')">📅 Roster Builder</button>
+  <button class="tab-btn" onclick="switchTab('download')">📄 View &amp; Download</button>
+</div>
+
+<div class="content">
+
+  <!-- ═══ STAFF TAB ═══ -->
+  <div id="tab-staff" class="tab-panel active">
+    <div class="card">
+      <div class="card-title">👥 Staff Management</div>
+
+      <!-- Word Upload Zone -->
+      <div class="tip-box">
+        <b>📄 Import names from a Word document (.docx)</b>
+        Your document can be a simple list of names, a numbered list, or organised with category headings like <i>RMOs, Nurses, Consultants</i> etc. The tool will auto-detect groups and let you confirm before importing.
+      </div>
+      <div class="upload-zone" onclick="document.getElementById('wordFileIn').click()">
+        <div class="uz-icon">📂</div>
+        <div>
+          <div class="uz-text">Click to upload a Word document (.docx)</div>
+          <div class="uz-sub">Supports: named lists, numbered lists, category-headered documents</div>
+        </div>
+        <input type="file" id="wordFileIn" accept=".docx" style="display:none" onchange="handleWordUpload(this)"/>
+      </div>
+
+      <div class="category-tabs" id="catTabs"></div>
+      <div class="add-row">
+        <input type="text" id="newName" placeholder="Type name and press Enter…" onkeydown="if(event.key==='Enter')addStaff()"/>
+        <button class="btn btn-primary" onclick="addStaff()">+ Add</button>
+        <button class="btn btn-outline btn-sm" onclick="bulkImport()">📋 Bulk Paste</button>
+        <button class="btn btn-outline btn-sm" style="color:#c0392b;border-color:#c0392b" onclick="clearCategory()">🗑 Clear All</button>
+      </div>
+      <div id="staffGrid"></div>
+      <div id="staffCount" class="staff-count"></div>
+    </div>
+  </div>
+
+  <!-- ═══ BUILDER TAB ═══ -->
+  <div id="tab-builder" class="tab-panel">
+    <div class="card">
+      <div class="card-title">📆 Set Fortnightly Period</div>
+      <div class="period-row">
+        <label>Start Date:</label>
+        <input type="date" id="startDate" onchange="setPeriod()"/>
+        <div id="periodInfo"></div>
+      </div>
+    </div>
+    <div class="builder-layout" id="builderLayout" style="display:none">
+      <div>
+        <div class="card" style="padding:12px">
+          <div class="card-title" style="font-size:13px;margin-bottom:10px">📆 15-Day Period</div>
+          <div class="day-list" id="dayList"></div>
+        </div>
+      </div>
+      <div>
+        <div class="card" id="assignCard">
+          <div class="card-title" id="assignTitle">📝 Select a day to assign staff</div>
+          <div id="shiftTabsEl"></div>
+          <div id="catAccordion"></div>
+          <div class="action-row" id="assignActions" style="display:none">
+            <button class="btn btn-success btn-sm" onclick="saveDay()">✅ Save Day</button>
+            <button class="btn btn-outline btn-sm" onclick="copyPrevDay()">📋 Copy Prev Day</button>
+            <button class="btn btn-outline btn-sm" style="color:#c0392b;border-color:#c0392b" onclick="clearDay()">🗑 Clear Day</button>
+          </div>
+          <div id="saveNotice" style="display:none" class="notice">✅ Assignment saved!</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ DOWNLOAD TAB ═══ -->
+  <div id="tab-download" class="tab-panel">
+    <div class="card">
+      <div class="card-title">⚙️ Document Settings</div>
+      <div class="inst-row">
+        <label>Institution Name:</label>
+        <input type="text" id="instName" placeholder="e.g. Jain AGM Ayurvedic Medical College & Hospital, Varur" oninput="renderPreview()"/>
+      </div>
+      <div class="view-controls">
+        <div>
+          <span style="font-size:13px;font-weight:700;color:#555;margin-right:8px">View:</span>
+          <div class="radio-grp">
+            <label class="radio-item"><input type="radio" name="vmode" value="combined" checked onchange="onViewChange()"> Combined</label>
+            <label class="radio-item"><input type="radio" name="vmode" value="category" onchange="onViewChange()"> Per Category</label>
+          </div>
+        </div>
+        <div id="catSelectWrap" style="display:none">
+          <select id="catSelect" onchange="renderPreview()" style="padding:7px 12px;border-radius:8px;border:1px solid #ccc;font-size:13px;font-family:inherit">
+            <option value="RMO">RMOs</option><option value="EMO">EMOs</option>
+            <option value="NURSE">Nurses</option><option value="AYAH">Ayahs</option>
+            <option value="CONSULTANT">Consultants</option>
+          </select>
+        </div>
+        <div id="dlPeriodInfo"></div>
+      </div>
+      <div class="dl-row">
+        <button class="btn btn-danger" onclick="dlPDF()">⬇️ Download PDF</button>
+        <button class="btn btn-word" onclick="dlWord()">⬇️ Download Word (.doc)</button>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">👁 Live Preview</div>
+      <div id="rosterPreview"><div class="empty-msg">Set a roster period in the Builder tab, then return here.</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ WORD IMPORT MODAL ═══ -->
+<div class="modal-bg" id="importModal">
+  <div class="modal">
+    <div class="modal-head">
+      <h2>📄 Import Staff Names from Word Document</h2>
+      <button class="modal-close" onclick="closeModal()">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody">
+    </div>
+    <div class="modal-foot">
+      <button class="btn btn-outline btn-sm" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-success" id="confirmImportBtn" onclick="confirmImport()">✅ Confirm Import</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const {jsPDF}=window.jspdf;
+const CATS=['RMO','EMO','NURSE','AYAH','CONSULTANT'];
+const CAT_LBL={RMO:'RMOs',EMO:'EMOs',NURSE:'Nurses',AYAH:'Ayahs',CONSULTANT:'Consultants'};
+const CAT_COL={RMO:'#c0392b',EMO:'#7d3c98',NURSE:'#1e8449',AYAH:'#d68910',CONSULTANT:'#1a5276'};
+const SHIFTS=[
+  {id:'s1',label:'8 AM – 4 PM',short:'Shift 1\n8AM–4PM'},
+  {id:'s2',label:'12 PM – 8 PM',short:'Shift 2\n12PM–8PM'},
+  {id:'s3',label:'8 PM – 8 AM',short:'Shift 3\n8PM–8AM'}
+];
+// Keywords to detect category headers in Word doc
+const CAT_KW={
+  RMO:['rmo','rmos','resident medical officer','resident medical officers'],
+  EMO:['emo','emos','emergency medical officer','emergency medical officers','emergency officer'],
+  NURSE:['nurse','nurses','nursing','nursing staff','staff nurse','staff nurses'],
+  AYAH:['ayah','ayahs','ward attendant','ward attendants','attender','attenders','attendant'],
+  CONSULTANT:['consultant','consultants','visiting consultant','visiting consultants','visiting faculty','faculty']
+};
+
+let ST={
+  staff:{RMO:[],EMO:[],NURSE:[],AYAH:[],CONSULTANT:[]},
+  roster:{},startDate:null,activeCat:'RMO',activeDay:null,activeShift:'s1'
+};
+let importGroups=[];// [{label,names,assignedCat}]
+
+function load(){try{const s=localStorage.getItem('hdroster2025');if(s)ST={...ST,...JSON.parse(s)}}catch(e){}}
+function save(){try{localStorage.setItem('hdroster2025',JSON.stringify(ST))}catch(e){}}
+
+// ─── TABS ───
+function switchTab(t){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  document.querySelectorAll('.tab-btn')[['staff','builder','download'].indexOf(t)].classList.add('active');
+  if(t==='download')renderPreview();
+}
+
+// ─── STAFF ───
+function renderCatTabs(){
+  document.getElementById('catTabs').innerHTML=CATS.map(c=>`
+    <button class="cat-tab ${ST.activeCat===c?'active':''}" onclick="selCat('${c}')">${CAT_LBL[c]} (${ST.staff[c].length})</button>
+  `).join('');
+}
+function selCat(c){ST.activeCat=c;renderCatTabs();renderStaffGrid()}
+function renderStaffGrid(){
+  const list=ST.staff[ST.activeCat];
+  const el=document.getElementById('staffGrid');
+  if(!list.length){el.innerHTML=`<div class="empty-msg">No staff added for ${CAT_LBL[ST.activeCat]} yet.</div>`;document.getElementById('staffCount').textContent='';return}
+  el.innerHTML=`<div class="staff-grid">${list.map((n,i)=>`
+    <div class="staff-item"><span>${i+1}. ${n}</span><button onclick="rmStaff(${i})" title="Remove">✕</button></div>`).join('')}</div>`;
+  document.getElementById('staffCount').textContent=`${list.length} staff member(s) in this category`;
+}
+function addStaff(){
+  const inp=document.getElementById('newName');const name=inp.value.trim();
+  if(!name)return;
+  if(ST.staff[ST.activeCat].map(n=>n.toLowerCase()).includes(name.toLowerCase()))return alert('Name already exists in '+CAT_LBL[ST.activeCat]);
+  ST.staff[ST.activeCat].push(name);inp.value='';save();renderCatTabs();renderStaffGrid();
+}
+function rmStaff(i){
+  if(!confirm('Remove '+ST.staff[ST.activeCat][i]+'?'))return;
+  ST.staff[ST.activeCat].splice(i,1);save();renderCatTabs();renderStaffGrid();
+}
+function clearCategory(){
+  if(!ST.staff[ST.activeCat].length)return;
+  if(!confirm('Remove ALL from '+CAT_LBL[ST.activeCat]+'?'))return;
+  ST.staff[ST.activeCat]=[];save();renderCatTabs();renderStaffGrid();
+}
+function bulkImport(){
+  const raw=prompt(`Paste names for ${CAT_LBL[ST.activeCat]} — one per line:`);
+  if(!raw)return;
+  const names=raw.split('\n').map(s=>cleanName(s)).filter(Boolean);
+  let added=0;
+  names.forEach(n=>{
+    if(!ST.staff[ST.activeCat].map(x=>x.toLowerCase()).includes(n.toLowerCase())){ST.staff[ST.activeCat].push(n);added++}
+  });
+  save();renderCatTabs();renderStaffGrid();
+  alert(`Added ${added} name(s). ${names.length-added} duplicate(s) skipped.`);
+}
+
+// ─── WORD UPLOAD ───
+function cleanName(raw){
+  // Strip numbering like "1.", "1)", "(1)", bullet chars, extra spaces
+  return raw.replace(/^[\s\u2022\u2023\u25E6\u2043\u2219\-–—*•·]+/,'')
+            .replace(/^\(?[\d]+[\).\-:]\s*/,'').trim();
+}
+
+function detectCategory(headerText){
+  const t=headerText.toLowerCase().trim();
+  for(const [cat,kws] of Object.entries(CAT_KW)){
+    if(kws.some(kw=>t===kw||t.startsWith(kw+' ')||t.startsWith(kw+':')||t.endsWith(' '+kw)))return cat;
+  }
+  return null;
+}
+
+function isLikelyHeader(line){
+  // A line is a header if it's short (<= 5 words), doesn't look like a name with title, and matches category keywords
+  const t=line.toLowerCase().trim();
+  if(t.length>60)return false;
+  return detectCategory(t)!==null;
+}
+
+function parseWordText(rawText){
+  const lines=rawText.split('\n').map(l=>l.trim()).filter(Boolean);
+  const groups=[];
+  let currentGroup=null;
+
+  for(const line of lines){
+    const cat=detectCategory(line.toLowerCase());
+    if(cat!==null){
+      // This line is a category header
+      currentGroup={label:line,names:[],assignedCat:cat};
+      groups.push(currentGroup);
+    } else {
+      const cleaned=cleanName(line);
+      if(!cleaned||cleaned.length<2)continue;
+      if(currentGroup){
+        currentGroup.names.push(cleaned);
+      } else {
+        // No header yet — put in an "Unassigned" group
+        if(!groups.length||groups[0].assignedCat!=='__UNASSIGNED__'){
+          const ug={label:'Names (no category header detected)',names:[],assignedCat:ST.activeCat};
+          groups.unshift(ug);
+        }
+        groups[0].names.push(cleaned);
+      }
+    }
+  }
+  return groups.filter(g=>g.names.length>0);
+}
+
+async function handleWordUpload(input){
+  const file=input.files[0];
+  if(!file)return;
+  input.value='';
+  if(!file.name.endsWith('.docx'))return alert('Please upload a .docx file (Word 2007 or later).');
+
+  const arrayBuffer=await file.arrayBuffer();
+  try{
+    const result=await mammoth.extractRawText({arrayBuffer});
+    const rawText=result.value;
+    if(!rawText.trim())return alert('The document appears to be empty or could not be read.');
+    importGroups=parseWordText(rawText);
+    if(!importGroups.length)return alert('No readable names found in the document. Please check the format.');
+    showImportModal(rawText,importGroups);
+  }catch(e){
+    alert('Could not read the Word document. Make sure it is a valid .docx file.\n\nError: '+e.message);
+  }
+}
+
+function showImportModal(rawText,groups){
+  const body=document.getElementById('modalBody');
+  const hasCategories=groups.some(g=>g.assignedCat!==ST.activeCat||groups.length>1);
+
+  let html=`<div class="import-info">
+    <b>How to read this:</b> The tool has tried to detect category groups from your document.
+    For each group below, verify the <b>target category</b> and remove any incorrect entries before importing.
+    Set a group to <b>"Skip"</b> to exclude it.
+  </div>`;
+
+  html+=`<div style="margin-bottom:12px">
+    <span style="font-size:13px;font-weight:700;color:#1a5276">Detected Groups: ${groups.length}</span>
+    <span style="font-size:12px;color:#7f8c8d;margin-left:10px">Total names: ${groups.reduce((a,g)=>a+g.names.length,0)}</span>
+  </div>`;
+
+  groups.forEach((g,gi)=>{
+    const opts=`<option value="__SKIP__">— Skip this group —</option>`+
+      CATS.map(c=>`<option value="${c}" ${g.assignedCat===c?'selected':''}>${CAT_LBL[c]}</option>`).join('');
+    html+=`<div class="map-group" id="mgroup-${gi}">
+      <div class="map-head">
+        <div class="map-head-left">📂 ${g.label} <span style="color:#7f8c8d;font-weight:400;font-size:11px">(${g.names.length} name${g.names.length!==1?'s':''})</span></div>
+        <div class="map-assign-row">
+          <span>Import as:</span>
+          <select id="mcat-${gi}" onchange="updateGroupCat(${gi},this.value)">${opts}</select>
+        </div>
+      </div>
+      <div class="map-names" id="mnames-${gi}">
+        ${g.names.map((n,ni)=>`
+          <span class="map-name-tag" id="mtag-${gi}-${ni}">
+            ${n}
+            <button onclick="removeImportName(${gi},${ni})" title="Remove this name">✕</button>
+          </span>`).join('')}
+      </div>
+    </div>`;
+  });
+
+  html+=`<details style="margin-top:12px">
+    <summary style="cursor:pointer;font-size:12px;color:#2874a6;font-weight:600">View raw extracted text</summary>
+    <div class="raw-preview" style="margin-top:8px">${rawText.replace(/</g,'&lt;').replace(/>/g,'&gt;')}</div>
+  </details>`;
+
+  body.innerHTML=html;
+  document.getElementById('importModal').classList.add('open');
+}
+
+function updateGroupCat(gi,val){
+  importGroups[gi].assignedCat=val;
+}
+
+function removeImportName(gi,ni){
+  importGroups[gi].names.splice(ni,1);
+  const tag=document.getElementById(`mtag-${gi}-${ni}`);
+  if(tag)tag.remove();
+}
+
+function confirmImport(){
+  let totalAdded=0,totalSkipped=0,totalDupes=0;
+  importGroups.forEach((g,gi)=>{
+    const cat=document.getElementById(`mcat-${gi}`)?.value||g.assignedCat;
+    if(cat==='__SKIP__')return;
+    g.names.forEach(name=>{
+      if(!name.trim()){return}
+      if(ST.staff[cat].map(n=>n.toLowerCase()).includes(name.toLowerCase())){totalDupes++;return}
+      ST.staff[cat].push(name);totalAdded++;
+    });
+  });
+  save();renderCatTabs();renderStaffGrid();closeModal();
+  alert(`✅ Import complete!\n\nAdded: ${totalAdded} name(s)\nDuplicates skipped: ${totalDupes}`);
+}
+
+function closeModal(){
+  document.getElementById('importModal').classList.remove('open');
+  importGroups=[];
+}
+
+// ─── BUILDER ───
+function fmtDate(d){return d.toLocaleDateString('en-IN',{day:'2-digit',month:'short',year:'numeric'})}
+function dayKey(d){return d.toISOString().split('T')[0]}
+function dayName(d){return d.toLocaleDateString('en-IN',{weekday:'short'})}
+function getRange(){
+  if(!ST.startDate)return[];
+  const r=[];const s=new Date(ST.startDate);
+  for(let i=0;i<15;i++){const d=new Date(s);d.setDate(s.getDate()+i);r.push(d)}
+  return r;
+}
+function hasData(dk){
+  const r=ST.roster[dk];if(!r)return false;
+  return SHIFTS.some(sh=>CATS.some(c=>r[sh.id]&&r[sh.id][c]&&r[sh.id][c].length));
+}
+function setPeriod(){
+  const v=document.getElementById('startDate').value;if(!v)return;
+  ST.startDate=v;
+  if(!ST.activeDay||!getRange().map(dayKey).includes(ST.activeDay))ST.activeDay=v;
+  save();renderPeriodInfo();renderDayList();
+  document.getElementById('builderLayout').style.display='grid';
+  if(ST.activeDay)loadDayAssign();
+}
+function renderPeriodInfo(){
+  const r=getRange();if(!r.length)return;
+  document.getElementById('periodInfo').innerHTML=`<div class="period-pill">📆 ${fmtDate(r[0])} — ${fmtDate(r[14])}</div>`;
+}
+function renderDayList(){
+  document.getElementById('dayList').innerHTML=getRange().map(d=>{
+    const dk=dayKey(d),act=dk===ST.activeDay?'active':'',hd=hasData(dk)?'has-data':'';
+    return `<div class="day-item ${act} ${hd}" onclick="selDay('${dk}')">
+      <div class="day-label">${dayName(d)}, ${d.getDate()}</div>
+      <div class="day-date">${fmtDate(d)}</div>
+      ${hd?'<div class="day-check">✅ Assigned</div>':''}
+    </div>`;
+  }).join('');
+}
+function selDay(dk){ST.activeDay=dk;renderDayList();loadDayAssign()}
+function loadDayAssign(){
+  const dk=ST.activeDay;if(!dk)return;
+  const d=new Date(dk);
+  document.getElementById('assignTitle').textContent=`📝 ${dayName(d)}, ${fmtDate(d)}`;
+  document.getElementById('assignActions').style.display='flex';
+  document.getElementById('saveNotice').style.display='none';
+  renderShiftTabs();renderAccordion();
+}
+function renderShiftTabs(){
+  document.getElementById('shiftTabsEl').innerHTML=`<div class="shift-tabs">${SHIFTS.map(sh=>`
+    <button class="shift-tab ${ST.activeShift===sh.id?'active':''}" onclick="selShift('${sh.id}')">${sh.short.replace('\n','<br>')}</button>
+  `).join('')}</div>`;
+}
+function selShift(sid){ST.activeShift=sid;renderShiftTabs();renderAccordion()}
+function getSelFor(sid,cat){return ST.roster[ST.activeDay]?.[sid]?.[cat]||[]}
+function renderAccordion(){
+  if(!ST.activeDay){document.getElementById('catAccordion').innerHTML='';return}
+  document.getElementById('catAccordion').innerHTML=CATS.map(cat=>{
+    const sel=getSelFor(ST.activeShift,cat),stf=ST.staff[cat];
+    return `<div class="cat-section">
+      <div class="cat-header" onclick="toggleAcc('${cat}')">
+        <div class="cat-header-left">
+          <span class="cat-badge badge-${cat.toLowerCase()}">${CAT_LBL[cat]}</span>
+          <span class="sel-count" id="cnt-${cat}">${sel.length?sel.length+' selected':''}</span>
+        </div>
+        <span id="arr-${cat}">▼</span>
+      </div>
+      <div class="cat-body" id="body-${cat}">
+        ${!stf.length?`<div class="empty-msg" style="padding:10px">No ${CAT_LBL[cat]} added yet.</div>`:
+        `<div style="display:flex;gap:8px;margin-bottom:9px">
+          <button class="btn btn-outline btn-sm" onclick="selAll('${cat}')">Select All</button>
+          <button class="btn btn-outline btn-sm" onclick="clrCat('${cat}')">Clear</button>
+        </div>
+        <div class="check-grid">
+          ${stf.map(n=>`<label class="check-item">
+            <input type="checkbox" value="${n}" ${sel.includes(n)?'checked':''} onchange="togSel('${cat}','${n}',this.checked)"/>
+            ${n}
+          </label>`).join('')}
+        </div>`}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleAcc(cat){
+  const b=document.getElementById('body-'+cat),a=document.getElementById('arr-'+cat);
+  if(b.style.display==='none'){b.style.display='block';a.textContent='▼'}
+  else{b.style.display='none';a.textContent='▶'}
+}
+function togSel(cat,name,chk){
+  const dk=ST.activeDay,sid=ST.activeShift;
+  if(!ST.roster[dk])ST.roster[dk]={};
+  if(!ST.roster[dk][sid])ST.roster[dk][sid]={};
+  if(!ST.roster[dk][sid][cat])ST.roster[dk][sid][cat]=[];
+  if(chk){if(!ST.roster[dk][sid][cat].includes(name))ST.roster[dk][sid][cat].push(name)}
+  else{ST.roster[dk][sid][cat]=ST.roster[dk][sid][cat].filter(n=>n!==name)}
+  document.getElementById('cnt-'+cat).textContent=(ST.roster[dk][sid][cat].length||'')+' selected';
+  if(!ST.roster[dk][sid][cat].length)document.getElementById('cnt-'+cat).textContent='';
+}
+function selAll(cat){
+  const dk=ST.activeDay,sid=ST.activeShift;
+  if(!ST.roster[dk])ST.roster[dk]={};
+  if(!ST.roster[dk][sid])ST.roster[dk][sid]={};
+  ST.roster[dk][sid][cat]=[...ST.staff[cat]];renderAccordion();
+}
+function clrCat(cat){
+  const dk=ST.activeDay,sid=ST.activeShift;
+  if(ST.roster[dk]?.[sid]?.[cat])ST.roster[dk][sid][cat]=[];renderAccordion();
+}
+function saveDay(){
+  save();renderDayList();
+  const n=document.getElementById('saveNotice');n.style.display='block';
+  setTimeout(()=>n.style.display='none',2500);
+}
+function clearDay(){
+  if(!confirm('Clear ALL shift assignments for this day?'))return;
+  if(ST.roster[ST.activeDay])delete ST.roster[ST.activeDay];
+  save();renderDayList();renderAccordion();
+}
+function copyPrevDay(){
+  const range=getRange().map(dayKey),idx=range.indexOf(ST.activeDay);
+  if(idx<=0)return alert('No previous day to copy from.');
+  const prevDk=range[idx-1];
+  if(!hasData(prevDk))return alert('No assignments found for the previous day.');
+  if(!confirm('Copy from previous day to this day?'))return;
+  ST.roster[ST.activeDay]=JSON.parse(JSON.stringify(ST.roster[prevDk]));
+  save();renderAccordion();renderDayList();
+  const n=document.getElementById('saveNotice');n.style.display='block';
+  setTimeout(()=>n.style.display='none',2500);
+}
+
+// ─── VIEW & DOWNLOAD ───
+function onViewChange(){
+  document.getElementById('catSelectWrap').style.display=getMode()==='category'?'block':'none';
+  renderPreview();
+}
+function getMode(){return document.querySelector('input[name="vmode"]:checked')?.value||'combined'}
+function getCat(){return document.getElementById('catSelect')?.value||'RMO'}
+function renderPreview(){
+  const dates=getRange(),pi=document.getElementById('dlPeriodInfo');
+  if(!dates.length){
+    document.getElementById('rosterPreview').innerHTML='<div class="empty-msg">Set a roster period in the Builder tab first.</div>';
+    if(pi)pi.innerHTML='';return;
+  }
+  if(pi)pi.innerHTML=`<div class="period-pill">📆 ${fmtDate(dates[0])} — ${fmtDate(dates[14])}</div>`;
+  const mode=getMode();
+  let html='<div class="preview-wrap">';
+  SHIFTS.forEach(sh=>{
+    html+=`<div class="shift-heading">Shift: ${sh.label}</div><table class="r-table"><thead><tr>`;
+    if(mode==='combined'){html+=`<th>Date</th><th>Day</th>${CATS.map(c=>`<th>${CAT_LBL[c]}</th>`).join('')}`}
+    else{html+=`<th>Date</th><th>Day</th><th>Assigned ${CAT_LBL[getCat()]}</th>`}
+    html+='</tr></thead><tbody>';
+    dates.forEach(d=>{
+      const dk=dayKey(d),r=ST.roster[dk]?.[sh.id]||{};
+      html+=`<tr><td><b>${fmtDate(d)}</b></td><td>${dayName(d)}</td>`;
+      if(mode==='combined'){CATS.forEach(c=>{const ns=(r[c]||[]);html+=`<td>${ns.length?ns.join('<br>'):'<span style="color:#ccc">—</span>'}</td>`})}
+      else{const ns=(r[getCat()]||[]);html+=`<td>${ns.length?ns.join('<br>'):'<span style="color:#ccc">—</span>'}</td>`}
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+  });
+  html+='</div>';
+  document.getElementById('rosterPreview').innerHTML=html;
+}
+
+// ─── PDF ───
+function dlPDF(){
+  const dates=getRange();if(!dates.length)return alert('Set a roster period first.');
+  const mode=getMode(),inst=document.getElementById('instName').value.trim()||'Hospital & Medical College';
+  const period=`${fmtDate(dates[0])} to ${fmtDate(dates[14])}`,catF=getCat();
+  const title=mode==='combined'?'COMBINED DUTY ROSTER':`DUTY ROSTER — ${CAT_LBL[catF]}`;
+  const doc=new jsPDF({orientation:'landscape',unit:'mm',format:'a4'});
+  SHIFTS.forEach((sh,si)=>{
+    if(si>0)doc.addPage();
+    doc.setFillColor(26,82,118);doc.rect(0,0,297,22,'F');
+    doc.setTextColor(255,255,255);
+    doc.setFontSize(13);doc.setFont('helvetica','bold');doc.text(title,148.5,10,{align:'center'});
+    doc.setFontSize(8.5);doc.setFont('helvetica','normal');doc.text(inst,148.5,15.5,{align:'center'});
+    doc.text(`Period: ${period}     |     Shift: ${sh.label}`,148.5,20,{align:'center'});
+    doc.setTextColor(0,0,0);
+    let head,body;
+    if(mode==='combined'){
+      head=[['Date','Day',...CATS.map(c=>CAT_LBL[c])]];
+      body=dates.map(d=>{const dk=dayKey(d),r=ST.roster[dk]?.[sh.id]||{};return[fmtDate(d),dayName(d),...CATS.map(c=>(r[c]||[]).join('\n')||'—')]});
+    }else{
+      head=[['Date','Day',`Assigned ${CAT_LBL[catF]}`]];
+      body=dates.map(d=>{const dk=dayKey(d);return[fmtDate(d),dayName(d),(ST.roster[dk]?.[sh.id]?.[catF]||[]).join('\n')||'—']});
+    }
+    doc.autoTable({startY:25,head,body,
+      styles:{fontSize:7.5,cellPadding:2.5,valign:'top',lineColor:[220,220,220],lineWidth:0.2},
+      headStyles:{fillColor:[40,116,166],textColor:255,fontStyle:'bold',fontSize:8},
+      alternateRowStyles:{fillColor:[235,245,255]},
+      margin:{left:8,right:8},
+      columnStyles:mode==='combined'?{0:{cellWidth:26},1:{cellWidth:12}}:{0:{cellWidth:26},1:{cellWidth:12}}
+    });
+    const fy=doc.lastAutoTable.finalY+14;
+    doc.setFontSize(8);doc.setDrawColor(100,100,100);
+    doc.setFont('helvetica','bold');doc.text('PRINCIPAL',60,fy+12,{align:'center'});
+    doc.line(18,fy+8,102,fy+8);doc.setFont('helvetica','normal');doc.text('Signature with Date & Seal',60,fy+16,{align:'center'});
+    doc.setFont('helvetica','bold');doc.text('MEDICAL SUPERINTENDENT',237,fy+12,{align:'center'});
+    doc.line(195,fy+8,279,fy+8);doc.setFont('helvetica','normal');doc.text('Signature with Date & Seal',237,fy+16,{align:'center'});
+    doc.setFontSize(7);doc.setTextColor(150,150,150);
+    doc.text(`Generated by Hospital Duty Roster Manager  |  ${new Date().toLocaleDateString('en-IN')}`,148.5,200,{align:'center'});
+  });
+  doc.save(`Duty_Roster_${ST.startDate||'export'}_${mode==='combined'?'Combined':catF}.pdf`);
+}
+
+// ─── WORD ───
+function dlWord(){
+  const dates=getRange();if(!dates.length)return alert('Set a roster period first.');
+  const mode=getMode(),inst=document.getElementById('instName').value.trim()||'Hospital & Medical College';
+  const period=`${fmtDate(dates[0])} to ${fmtDate(dates[14])}`,catF=getCat();
+  const title=mode==='combined'?'COMBINED DUTY ROSTER':`DUTY ROSTER — ${CAT_LBL[catF]}`;
+  let body=`<h1 style="text-align:center;color:#1a5276;font-size:18pt">${title}</h1>
+  <p style="text-align:center;font-size:11pt"><b>${inst}</b></p>
+  <p style="text-align:center;color:#555;font-size:10pt">Period: ${period}</p><br>`;
+  SHIFTS.forEach(sh=>{
+    body+=`<h2 style="color:#2874a6;font-size:12pt;border-bottom:2px solid #aaa;padding-bottom:4px">Shift: ${sh.label}</h2>
+    <table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:9pt">
+    <thead><tr style="background:#1a5276;color:white"><th>Date</th><th>Day</th>`;
+    if(mode==='combined'){CATS.forEach(c=>{body+=`<th>${CAT_LBL[c]}</th>`})}
+    else{body+=`<th>Assigned ${CAT_LBL[catF]}</th>`}
+    body+='</tr></thead><tbody>';
+    dates.forEach((d,di)=>{
+      const dk=dayKey(d),r=ST.roster[dk]?.[sh.id]||{};
+      body+=`<tr style="${di%2?'background:#f0f8ff':''}"><td><b>${fmtDate(d)}</b></td><td>${dayName(d)}</td>`;
+      if(mode==='combined'){CATS.forEach(c=>{body+=`<td>${(r[c]||[]).join('<br>')||'—'}</td>`})}
+      else{body+=`<td>${(r[catF]||[]).join('<br>')||'—'}</td>`}
+      body+='</tr>';
+    });
+    body+=`</tbody></table>
+    <table style="width:100%;margin-top:40px;border:none"><tr>
+      <td style="width:50%;text-align:center;padding:20px"><br><br><br>
+        <hr style="border-top:1px solid #333;width:220px;margin:0 auto 8px">
+        <b>PRINCIPAL</b><br><span style="font-size:8pt">Signature with Date &amp; Seal</span>
+      </td>
+      <td style="width:50%;text-align:center;padding:20px"><br><br><br>
+        <hr style="border-top:1px solid #333;width:220px;margin:0 auto 8px">
+        <b>MEDICAL SUPERINTENDENT</b><br><span style="font-size:8pt">Signature with Date &amp; Seal</span>
+      </td>
+    </tr></table><br><p style="page-break-after:always"></p>`;
+  });
+  const full=`<html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+  <head><meta charset='utf-8'><style>body{font-family:Arial,sans-serif;margin:30px}table{border-collapse:collapse;width:100%}</style></head>
+  <body>${body}</body></html>`;
+  const blob=new Blob([full],{type:'application/msword'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download=`Duty_Roster_${ST.startDate||'export'}_${mode==='combined'?'Combined':catF}.doc`;
+  a.click();URL.revokeObjectURL(a.href);
+}
+
+// ─── INIT ───
+load();renderCatTabs();renderStaffGrid();
+if(ST.startDate){
+  document.getElementById('startDate').value=ST.startDate;
+  renderPeriodInfo();renderDayList();
+  document.getElementById('builderLayout').style.display='grid';
+  if(ST.activeDay)loadDayAssign();
+}
+</script>
+</body>
+</html>
